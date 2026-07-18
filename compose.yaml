@@ -4,4 +4,10 @@
     build:
       context: .
       dockerfile: IsleBridge.Api/Dockerfile
-
+    user: "1000:1000"   # match `id -u isle`/`id -g isle` on the host — see note below
+    ports:
+      - "8080:8080"
+    volumes:
+      - /home/isle/isle-server/TheIsle/Binaries/Win64/Mods/CnCBridge:/mnt/cncbridge:rw
+      - ./config.json:/app/config.json:ro
+    restart: unless-stopped
