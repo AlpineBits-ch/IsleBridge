@@ -13,12 +13,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Saved\chat.ndjson">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
-    </ItemGroup>
-
-    <ItemGroup>
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
