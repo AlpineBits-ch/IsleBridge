@@ -8,7 +8,7 @@ namespace IsleBridge.Api.InboxWriter;
 public class InboxWriter(Config config, ILogger<InboxWriter> logger) : IInboxWriter
 {
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly string _path = Path.Combine(config.PluginBasePath, "Saved/inbox.ndjson");
+    private readonly string _path = Path.Join(config.PluginBasePath, "Saved/inbox.ndjson");
 
     public async Task AppendAsync(CommandDto command, CancellationToken ct = default)
     {
