@@ -7,12 +7,17 @@ namespace IsleBridge.Api.InboxWriter;
 
 public class InboxWriter(Config config, ILogger<InboxWriter> logger) : IInboxWriter
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly string _path = Path.Join(Config.Get().PluginBasePath, "Saved/inbox.ndjson");
 
     public async Task AppendAsync(CommandDto command, CancellationToken ct = default)
     {
-        var line = JsonSerializer.Serialize(command) + "\n";
+        var line = JsonSerializer.Serialize(command, JsonOptions) + "\n";
         var bytes = Encoding.UTF8.GetBytes(line);
 
         await _lock.WaitAsync(ct);
