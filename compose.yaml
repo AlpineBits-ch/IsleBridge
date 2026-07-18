@@ -1,0 +1,7 @@
+﻿services:
+  islebridge.api:
+    image: islebridge.api
+    build:
+      context: .
+      dockerfile: IsleBridge.Api/Dockerfile
+
