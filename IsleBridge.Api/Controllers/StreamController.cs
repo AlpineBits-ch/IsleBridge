@@ -15,7 +15,8 @@ public class StreamController(
     [FromKeyedServices(StreamKeys.Chat)] StreamHub chat,
     [FromKeyedServices(StreamKeys.Events)] StreamHub events,
     [FromKeyedServices(StreamKeys.Stats)] StreamHub stats,
-    [FromKeyedServices(StreamKeys.Results)] StreamHub results) : ControllerBase
+    [FromKeyedServices(StreamKeys.Results)] StreamHub results,
+    ILogger<StreamController> logger) : ControllerBase
 {
     [HttpGet("chat")]
     public Task Chat(CancellationToken ct) => Stream(chat, ct);
@@ -31,6 +32,8 @@ public class StreamController(
 
     private async Task Stream(StreamHub hub, CancellationToken ct)
     {
+        logger.LogInformation("Stream started");
+        
         Response.Headers.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Connection = "keep-alive";
