@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using IsleBridge.Api.InboxWriter;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace IsleBridge.Api.Controllers;
 
@@ -12,11 +13,12 @@ namespace IsleBridge.Api.Controllers;
 /// </summary>
 [Route("api/v1/command")]
 [ApiController]
-public class CommandController(IInboxWriter inbox) : ControllerBase
+public class CommandController(IInboxWriter inbox, ILogger<CommandController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Send([FromBody] JsonObject? envelope, CancellationToken ct)
     {
+        logger.LogInformation("Received command envelope: {Envelope}", JsonConvert.SerializeObject(envelope));
         if (envelope is null)
             return BadRequest(new { error = "empty body" });
 
