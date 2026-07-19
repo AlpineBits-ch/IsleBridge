@@ -18,7 +18,7 @@ public class CommandController(IInboxWriter inbox, ILogger<CommandController> lo
     [HttpPost]
     public async Task<IActionResult> Send([FromBody] JsonObject? envelope, CancellationToken ct)
     {
-        logger.LogInformation("Received command envelope: {Envelope}", JsonConvert.SerializeObject(envelope));
+        logger.LogInformation("Received command envelope: {Envelope}", envelope?.ToJsonString());
         if (envelope is null)
             return BadRequest(new { error = "empty body" });
 
