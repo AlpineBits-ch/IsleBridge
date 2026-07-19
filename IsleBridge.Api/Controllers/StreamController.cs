@@ -51,6 +51,7 @@ public class StreamController(
             await foreach (var line in subscription.Reader.ReadAllAsync(ct))
             {
                 var frame = Encoding.UTF8.GetBytes($"data: {line}\n\n");
+                logger.LogInformation("Sending frame: {Frame}", line);
                 await body.WriteAsync(frame, ct);
                 await body.FlushAsync(ct);
             }
