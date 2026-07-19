@@ -1,23 +1,24 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
-using IsleBridge.Api.Dtos;
-using Microsoft.Extensions.Options;
+using System.Text.Json.Nodes;
 
 namespace IsleBridge.Api.InboxWriter;
 
+/// <summary>
+/// Appends command envelopes to <c>inbox.ndjson</c> per contract §1: append-only,
+/// never truncate. The envelope is serialized straight from the <see cref="JsonObject"/>
+/// so engine field names (e.g. the PascalCase skin customizer keys) are preserved
+/// exactly rather than being run through a camelCase policy.
+/// </summary>
 public class InboxWriter(Config config, ILogger<InboxWriter> logger) : IInboxWriter
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
+    private static readonly JsonSerializerOptions Compact = new() { WriteIndented = false };
 
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly string _path = Path.Join(Config.Get().PluginBasePath, "Saved/inbox.ndjson");
 
-    public async Task AppendAsync(CommandDto command, CancellationToken ct = default)
+    public async Task AppendAsync(JsonObject command, CancellationToken ct = default)
     {
-        var line = JsonSerializer.Serialize(command, JsonOptions) + "\n";
+        var line = command.ToJsonString(Compact) + "\n";
         var bytes = Encoding.UTF8.GetBytes(line);
 
         await _lock.WaitAsync(ct);
@@ -36,21 +37,21 @@ public class InboxWriter(Config config, ILogger<InboxWriter> logger) : IInboxWri
             _lock.Release();
         }
 
-        logger.LogInformation("Queued {Verb} for {Steam} (id={Id})", command.Verb, command.Steam, command.Id);
+        logger.LogInformation("Queued {Verb} (id={Id})",
+            command["verb"]?.GetValue<string>(), command["id"]?.GetValue<string>());
     }
 
     private async Task WriteOnceAsync(byte[] bytes, CancellationToken ct)
     {
+        var path = config.InboxPath;
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        // FileShare.ReadWrite: the plugin may rename the inbox to .processing while it
+        // drains; we only ever hold it briefly for an append.
         await using var fs = new FileStream(
-            _path, FileMode.Append, FileAccess.Write, FileShare.Read,
+            path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite,
             bufferSize: 4096, useAsync: true);
         await fs.WriteAsync(bytes, ct);
         await fs.FlushAsync(ct);
     }
-}
-
-public class BridgeOptions
-{
-    public required string InboxPath { get; set; }
-    public required string ChatOutPath { get; set; }
 }

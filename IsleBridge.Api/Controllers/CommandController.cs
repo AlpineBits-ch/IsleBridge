@@ -1,43 +1,40 @@
-﻿using IsleBridge.Api.Dtos;
+using System.Text.Json.Nodes;
 using IsleBridge.Api.InboxWriter;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IsleBridge.Api.Controllers;
 
-
+/// <summary>
+/// Fire-and-forget command ingress. The Api is a proxy: it validates the envelope has a
+/// verb, fills in <c>id</c>/<c>ts</c> if the caller omitted them, and appends the line to
+/// the inbox. Acks and read payloads come back asynchronously on the results stream —
+/// correlation by <c>id</c> is the SDK's job (contract §4).
+/// </summary>
 [Route("api/v1/command")]
 [ApiController]
 public class CommandController(IInboxWriter inbox) : ControllerBase
 {
-    [HttpPost("swap")]
-    public async Task<IActionResult> Swap([FromBody] SwapCommand cmd, CancellationToken ct)
+    [HttpPost]
+    public async Task<IActionResult> Send([FromBody] JsonObject? envelope, CancellationToken ct)
     {
-        var dto = new CommandDto { Verb = "swap", Steam = cmd.Steam, Args = cmd.Args };
-        await inbox.AppendAsync(dto, ct);
-        return Accepted(new { dto.Id });
-    }
+        if (envelope is null)
+            return BadRequest(new { error = "empty body" });
 
-    [HttpPost("setstats")]
-    public async Task<IActionResult> SetStats([FromBody] SetStatsCommand cmd, CancellationToken ct)
-    {
-        var dto = new CommandDto { Verb = "setstats", Steam = cmd.Steam, Args = cmd.Args };
-        await inbox.AppendAsync(dto, ct);
-        return Accepted(new { dto.Id });
-    }
+        var verb = envelope["verb"]?.GetValue<string>();
+        if (string.IsNullOrWhiteSpace(verb))
+            return BadRequest(new { error = "missing verb" });
 
-    [HttpPost("prime")]
-    public async Task<IActionResult> Prime([FromBody] TargetedCommand cmd, CancellationToken ct)
-    {
-        var dto = new CommandDto { Verb = "prime", Steam = cmd.Steam };
-        await inbox.AppendAsync(dto, ct);
-        return Accepted(new { dto.Id });
-    }
+        // The SDK normally owns the id; fill one in only if a raw caller omitted it.
+        var id = envelope["id"]?.GetValue<string>();
+        if (string.IsNullOrEmpty(id))
+        {
+            id = Guid.CreateVersion7().ToString();
+            envelope["id"] = id;
+        }
 
-    [HttpPost("unprime")]
-    public async Task<IActionResult> Unprime([FromBody] TargetedCommand cmd, CancellationToken ct)
-    {
-        var dto = new CommandDto { Verb = "unprime", Steam = cmd.Steam };
-        await inbox.AppendAsync(dto, ct);
-        return Accepted(new { dto.Id });
+        envelope["ts"] ??= DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        await inbox.AppendAsync(envelope, ct);
+        return Accepted(new { id });
     }
 }
