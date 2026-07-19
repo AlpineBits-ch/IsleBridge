@@ -32,7 +32,6 @@ public class StreamController(
 
     private async Task Stream(StreamHub hub, CancellationToken ct)
     {
-        logger.LogInformation("Stream started");
         
         Response.Headers.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
@@ -51,7 +50,6 @@ public class StreamController(
             await foreach (var line in subscription.Reader.ReadAllAsync(ct))
             {
                 var frame = Encoding.UTF8.GetBytes($"data: {line}\n\n");
-                logger.LogInformation("Sending frame: {Frame}", line);
                 await body.WriteAsync(frame, ct);
                 await body.FlushAsync(ct);
             }
